@@ -3,27 +3,25 @@ import mathutils
 import bmesh
 import random
 
-
-
 class CameraUpdater:
-    def __init__(self, look_from_volume_name, look_at_volume_name, camera_name, seed=None):
-        self.look_from_volume_name = look_from_volume_name
-        self.look_at_volume_name = look_at_volume_name
+    def __init__(self, look_from_volume_name, look_at_volume_name, camera_name, seed):
+        self.look_at_volume = bpy.data.objects.get(look_at_volume_name)
+        self.look_from_volume = bpy.data.objects.get(look_from_volume_name)
         self.camera_name = camera_name
-        if seed is not None:
-            random.seed(seed)
+        self.seed = seed
 
     def update(self):
+        self._set_volume_point_extraction_seeds(self.look_at_volume, "Look At Volume", self._get_next_seed())
+        self._set_volume_point_extraction_seeds(self.look_at_volume, "Look At Volume", self._get_next_seed())
+
         depsgraph = bpy.context.evaluated_depsgraph_get()
-        look_from_volume = bpy.data.objects.get(self.look_from_volume_name)
-        look_from_coords = self._get_vert_sequence_from_object(look_from_volume, depsgraph)
+        look_from_coords = self._get_vert_sequence_from_object(self.look_from_volume, depsgraph)
+        look_at_coords = self._get_vert_sequence_from_object(self.look_at_volume, depsgraph)
         
-        look_at_volume = bpy.data.objects.get(self.look_at_volume_name)
-        look_at_coords = self._get_vert_sequence_from_object(look_at_volume, depsgraph)
-        
-        look_from_index = random.randint(0, len(look_from_coords) - 1)
-        look_from = look_from_coords[look_from_index]
-        look_at = look_at_coords[random.randint(0, len(look_at_coords) - 1)]
+        assert len(look_from_coords) == 1, f"Look from volume '{self.look_from_volume.name}' must have exactly one vertex."
+        assert len(look_at_coords) == 1, f"Look at volume '{self.look_at_volume.name}' must have exactly one vertex."
+        look_from = look_from_coords[0]
+        look_at = look_at_coords[0]
         
         if look_at.z > look_from.z:
             z_diff = look_at.z - look_from.z
@@ -72,8 +70,23 @@ class CameraUpdater:
         verts = [v.co.copy() for v in bm.verts]
         bm.free()
         return verts
+    
+    def _set_volume_point_extraction_seeds(self, object, modifier_name, seed, socket_index=2):
+        assert object is not None, f"Object '{object.name}' not found."
+        object_name = object.name
+    
+        modifier = object.modifiers.get(modifier_name)
+        assert modifier is not None, f"Modifier '{modifier_name}' not found on '{object_name}'."
 
-# Example usage
+        modifier[f"Socket_{socket_index}"] = seed
+    
+        object.modifiers.update()
+        object.update_tag()
+    
+    def _get_next_seed(self):
+        self.seed += 1
+        return self.seed
+
 look_from_volume_name = "look_from_volume"
 look_at_volume_name = "look_at_volume"
 camera_name = "cam.001"
