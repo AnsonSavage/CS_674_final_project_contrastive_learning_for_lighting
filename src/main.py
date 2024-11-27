@@ -96,16 +96,20 @@ def main():
     
     # Logging
     logger = setup_logging(args.output_dir, log_to_console=True)
+    logger.info("========== Starting Rendering Process ==========")
     logger.info(f"Blend File: {get_blend_filepath()}")
     logger.info(f"Arguments: {args}")
     logger.info(f"Start seed: {args.start_seed}")
     logger.info(f"End seed: {args.end_seed if args.end_seed else 'None provided'}")
+    logger.info("===============================================\n")
 
     blend_file_name = get_blend_filename()
 
     # If the end seed is not provided, we will loop forever, otherwise, we will loop until the end seed is reached.
     seed = args.start_seed
     while True:
+        logger.info(f"\n--- Seed: {seed} ---")
+        
         # Update the camera position
         camera_spawner = CameraSpawner(look_from_volume_name, look_at_volume_name, camera_name, seed)
         camera_spawner.update() # Note that the camera is updated once, but all HDRIs are looped through. This is done in an effort to encourage teh AI to learn the differences in lighting even when given the exact same angle, etc.
@@ -113,11 +117,14 @@ def main():
         # Loop through each hdri
         hdri_manager = HDRIManager(args.hdri_dir)
         for hdri in hdri_manager.available_hdris:
-            logger.info(f"Using HDRI: {hdri} with strength {1.0}")
+            logger.info(f"\tUsing HDRI: {hdri} with strength {1.0}")
             hdri_manager.set_hdri(hdri)
             render_manager = RenderManager(os.path.join(args.output_dir, f"scene_{blend_file_name}_seed_{seed}_hdri_{hdri.stem}.{args.output_format}"), file_format=args.output_format)
             render_manager.render_image()
-            logger.info(f"Rendered image: {render_manager.output_path}")
+            logger.info(f"\tRendered image: {render_manager.output_path}")
+        
+        logger.info(f"--- End of Seed: {seed} ---")
+        logger.info("===============================================\n")
         
         # Increment the seed
         seed += 1
