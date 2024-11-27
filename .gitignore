@@ -1,2 +1,7 @@
 input_scenes/*
 hdris/*
+blender-4.3.0-linux-x64
+*.pyc
+*.png
+*.PNG
+*.log

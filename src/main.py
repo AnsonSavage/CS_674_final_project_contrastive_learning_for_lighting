@@ -1,7 +1,9 @@
 import argparse
 import os
 import sys
+sys.path.append('/home/ansonsav/cs_674/CS_674_final_project_contrastive_learning_for_lighting/src')
 import logging
+import datetime
 from camera_spawner import CameraSpawner
 from hdri_manager import HDRIManager
 from render_manager import RenderManager
@@ -18,6 +20,19 @@ def get_blend_filepath():
 def get_blend_filename():
     return pathlib.Path(get_blend_filepath()).stem
 
+def is_gpu_available():
+    """
+    Checks if GPU rendering is available.
+    """
+    prefs = bpy.context.preferences
+    cycles_prefs = prefs.addons['cycles'].preferences
+    cycles_prefs.get_devices()
+
+    for device in cycles_prefs.devices:
+        if device.type in {'CUDA', 'OPTIX', 'OPENCL', 'METAL'} and device.use:
+            return True
+    return False
+
 def parse_arguments():
     """
     Parses command-line arguments passed after '--' separator.
@@ -31,8 +46,8 @@ def parse_arguments():
                         help='Path to the HDRI directory')
     parser.add_argument('--output_dir', type=str, required=True,
                         help='Path to the output directory')
-    parser.add_argument('--output_format', type=str, choices=['png', 'exr'], default='png',
-                        help='Output format for render passes (png or exr)')
+    parser.add_argument('--output_format', type=str, choices=['PNG', 'EXR'], default='PNG',
+                        help='Output format for render passes (PNG or EXR)')
 
     # Find "--" separator in Blender's sys.argv
     argv = sys.argv
@@ -46,7 +61,7 @@ def parse_arguments():
     return args
 
 def setup_logging(output_dir, log_to_console=False) -> logging.Logger:
-    log_file = os.path.join(output_dir, 'render.log')
+    log_file = os.path.join(output_dir, f'render_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
     
     # Create a custom logger
     logger = logging.getLogger()
@@ -72,6 +87,7 @@ def setup_logging(output_dir, log_to_console=False) -> logging.Logger:
 
 def main():
     args = parse_arguments()
+
     
     # Logging
     logger = setup_logging(args.output_dir, log_to_console=True)
@@ -80,6 +96,15 @@ def main():
     logger.info(f"Arguments: {args}")
     logger.info(f"Start seed: {args.start_seed}")
     logger.info(f"End seed: {args.end_seed if args.end_seed else 'None provided'}")
+
+    # Set rendering device
+    if is_gpu_available():
+        bpy.context.scene.cycles.device = 'GPU'
+        logger.info("GPU rendering is available and will be used.")
+    else:
+        bpy.context.scene.cycles.device = 'CPU'
+        logger.info("GPU rendering not available. Rendering with CPU.")
+
     logger.info("===============================================\n")
 
     blend_file_name = get_blend_filename()
@@ -98,9 +123,9 @@ def main():
         for hdri in hdri_manager.available_hdris:
             logger.info(f"\tUsing HDRI: {hdri} with strength {1.0}")
             hdri_manager.set_hdri(hdri)
-            render_manager = RenderManager(os.path.join(args.output_dir, f"scene_{blend_file_name}_seed_{seed}_hdri_{hdri.stem}.{args.output_format}"), file_format=args.output_format)
+            render_manager = RenderManager(os.path.join(args.output_dir, f"scene_{blend_file_name}_seed_{seed}_hdri_{hdri.stem}"), file_format=args.output_format)
             render_manager.render_image()
-            logger.info(f"\tRendered image: {render_manager.output_path}")
+            logger.info(f"\tRendered image: {render_manager.output_path}\n")
         
         logger.info(f"--- End of Seed: {seed} ---")
         logger.info("===============================================\n")

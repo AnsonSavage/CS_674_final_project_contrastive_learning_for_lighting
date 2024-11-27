@@ -6,7 +6,9 @@ import random
 class CameraSpawner:
     def __init__(self, look_from_volume_name, look_at_volume_name, camera_name, seed):
         self.look_at_volume = bpy.data.objects.get(look_at_volume_name)
+        assert self.look_at_volume is not None, f"Look at volume '{look_at_volume_name}' not found in the scene."
         self.look_from_volume = bpy.data.objects.get(look_from_volume_name)
+        assert self.look_from_volume is not None, f"Look from volume '{look_from_volume_name}' not found in the scene."
         self.camera_name = camera_name
         self.seed = seed
 

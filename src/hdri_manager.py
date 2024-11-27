@@ -37,7 +37,7 @@ class HDRIManager:
         env_texture = bpy.context.scene.world.node_tree.nodes.new(type='ShaderNodeTexEnvironment')
         
         # Set the image for the Environment Texture
-        env_texture.image = bpy.data.images.load(hdri_path)
+        env_texture.image = bpy.data.images.load(str(hdri_path))
         
         # Create Background node
         background = bpy.context.scene.world.node_tree.nodes.new(type='ShaderNodeBackground')
