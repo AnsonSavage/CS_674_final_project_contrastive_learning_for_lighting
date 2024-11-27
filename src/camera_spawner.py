@@ -3,7 +3,7 @@ import mathutils
 import bmesh
 import random
 
-class CameraUpdater:
+class CameraSpawner:
     def __init__(self, look_from_volume_name, look_at_volume_name, camera_name, seed):
         self.look_at_volume = bpy.data.objects.get(look_at_volume_name)
         self.look_from_volume = bpy.data.objects.get(look_from_volume_name)
@@ -91,5 +91,5 @@ look_from_volume_name = "look_from_volume"
 look_at_volume_name = "look_at_volume"
 camera_name = "cam.001"
 
-camera_updater = CameraUpdater(look_from_volume_name, look_at_volume_name, camera_name)
+camera_updater = CameraSpawner(look_from_volume_name, look_at_volume_name, camera_name)
 camera_updater.update()
