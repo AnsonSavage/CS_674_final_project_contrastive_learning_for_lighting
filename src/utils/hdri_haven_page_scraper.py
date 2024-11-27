@@ -1,6 +1,8 @@
 import json
 import requests
 from bs4 import BeautifulSoup
+import argparse
+import os
 
 def fetch_html_content(url):
     """
@@ -80,52 +82,51 @@ def extract_tags_and_categories(html_content):
     
     return output
 
-def save_to_json(data, filename='asset_metadata.json'):
+def save_to_json(data, directory, hdri_name):
     """
-    Save extracted data to a JSON file.
+    Save extracted data to a JSON file inside the specified directory with HDRI name prefix.
     
     Args:
         data (dict): Dictionary of categories and tags
-        filename (str): Name of the output JSON file
+        directory (str): Directory to save the JSON file
+        hdri_name (str): Name prefix for the JSON file
     """
-    with open(filename, 'w', encoding='utf-8') as f:
+    filepath = os.path.join(directory, f"{hdri_name}_asset_metadata.json")
+    with open(filepath, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
 
-def scrape_polyhaven_asset(url):
+def scrape_polyhaven_asset(url, directory):
     """
-    Main function to scrape a Poly Haven asset page.
+    Scrape a single Poly Haven asset page and save metadata.
     
     Args:
         url (str): URL of the Poly Haven asset page
-    
-    Returns:
-        dict: Extracted asset metadata
+        directory (str): Directory to save the JSON file
     """
-    # Fetch HTML content
+    hdri_name = url.rstrip('/').split('/')[-1]
+    hdri_dir = os.path.join(directory, hdri_name)
+    os.makedirs(hdri_dir, exist_ok=True)
+
     html_content = fetch_html_content(url)
 
     if not html_content:
-        return None
+        return
     
-    # Extract tags and categories
     asset_metadata = extract_tags_and_categories(html_content)
     
-    # Save to JSON file
-    save_to_json(asset_metadata)
+    save_to_json(asset_metadata, hdri_dir, hdri_name)
     
-    # Print the results
-    print("Asset Metadata:")
+    print(f"Asset Metadata for '{hdri_name}':")
     print(json.dumps(asset_metadata, indent=2))
-    
-    return asset_metadata
 
 def main():
-    # Example usage
-    url = 'https://polyhaven.com/a/rogland_clear_night'
-    scrape_polyhaven_asset(url)
+    parser = argparse.ArgumentParser(description='Scrape HDRI metadata from Poly Haven.')
+    parser.add_argument('directory', type=str, help='Directory to save HDRI metadata')
+    parser.add_argument('urls', nargs='+', help='List of Poly Haven asset URLs to scrape')
+    args = parser.parse_args()
+
+    for url in args.urls:
+        scrape_polyhaven_asset(url, args.directory)
 
 if __name__ == '__main__':
     main()
-
-# Requirements:
-# pip install beautifulsoup4 requests
