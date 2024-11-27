@@ -86,10 +86,3 @@ class CameraSpawner:
     def _get_next_seed(self):
         self.seed += 1
         return self.seed
-
-look_from_volume_name = "look_from_volume"
-look_at_volume_name = "look_at_volume"
-camera_name = "cam.001"
-
-camera_updater = CameraSpawner(look_from_volume_name, look_at_volume_name, camera_name)
-camera_updater.update()
