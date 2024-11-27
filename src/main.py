@@ -1,5 +1,4 @@
 import argparse
-import random
 import os
 import sys
 import logging
@@ -12,26 +11,6 @@ import pathlib
 look_from_volume_name = "look_from_volume"
 look_at_volume_name = "look_at_volume"
 camera_name = "cam.001"
-
-# Alright, here's a rough outline of what we need to do now.
-# so, this script will be passed in as a command line argument to blender with the particular demo scene.
-# So, we need to store the name of the .blend file
-# Command line arguments should also include a start seed and an optional end seed.
-# We can assume that volume and camera names will be standardized across all .blend files.
-# Another command line argument will be the path to the HDRI directory
-# Another command line argument will be the path to the output directory
-# In this output directory, in addition to saving the renders, we should also store a .log file.
-# This log file should contain the following information:
-# - The name of the .blend file
-# - plain text of all the code in the current state
-# - The seed that was used
-# - The HDRI that was used
-# - The camera position
-# - The camera rotation
-# - The render time
-# - The path to the rendered image
-# - The exposure of the scene
-# - The strength of the HDRI
 
 def get_blend_filepath():
     return bpy.data.filepath
