@@ -4,17 +4,17 @@ import bmesh
 import random
 
 class CameraSpawner:
-    def __init__(self, look_from_volume_name, look_at_volume_name, camera_name, seed):
+    def __init__(self, look_from_volume_name, look_at_volume_name, camera_name):
         self.look_at_volume = bpy.data.objects.get(look_at_volume_name)
         assert self.look_at_volume is not None, f"Look at volume '{look_at_volume_name}' not found in the scene."
         self.look_from_volume = bpy.data.objects.get(look_from_volume_name)
         assert self.look_from_volume is not None, f"Look from volume '{look_from_volume_name}' not found in the scene."
         self.camera_name = camera_name
-        self.seed = seed
 
-    def update(self):
-        self._set_volume_point_extraction_seeds(self.look_at_volume, "Look At Volume", self._get_next_seed())
-        self._set_volume_point_extraction_seeds(self.look_from_volume, "Look From Volume", self._get_next_seed())
+    def update(self, seed):
+        assert seed is not None, "Seed must be provided."
+        self._set_volume_point_extraction_seeds(self.look_at_volume, "Look At Volume", seed)
+        self._set_volume_point_extraction_seeds(self.look_from_volume, "Look From Volume", seed*2 + 1)
 
         depsgraph = bpy.context.evaluated_depsgraph_get()
         look_from_coords = self._get_vert_sequence_from_object(self.look_from_volume, depsgraph)
@@ -84,7 +84,3 @@ class CameraSpawner:
     
         object.modifiers.update()
         object.update_tag()
-    
-    def _get_next_seed(self):
-        self.seed += 1
-        return self.seed

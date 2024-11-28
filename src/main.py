@@ -111,12 +111,13 @@ def main():
 
     # If the end seed is not provided, we will loop forever, otherwise, we will loop until the end seed is reached.
     seed = args.start_seed
+    camera_spawner = CameraSpawner(look_from_volume_name, look_at_volume_name, camera_name)
+
     while True:
         logger.info(f"\n--- Seed: {seed} ---")
         
         # Update the camera position
-        camera_spawner = CameraSpawner(look_from_volume_name, look_at_volume_name, camera_name, seed)
-        camera_spawner.update() # Note that the camera is updated once, but all HDRIs are looped through. This is done in an effort to encourage teh AI to learn the differences in lighting even when given the exact same angle, etc.
+        camera_spawner.update(seed) # Note that the camera is updated once, but all HDRIs are looped through. This is done in an effort to encourage teh AI to learn the differences in lighting even when given the exact same angle, etc.
 
         # Loop through each hdri
         hdri_manager = HDRIManager(args.hdri_dir)
