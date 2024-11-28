@@ -14,7 +14,7 @@ class CameraSpawner:
 
     def update(self):
         self._set_volume_point_extraction_seeds(self.look_at_volume, "Look At Volume", self._get_next_seed())
-        self._set_volume_point_extraction_seeds(self.look_at_volume, "Look At Volume", self._get_next_seed())
+        self._set_volume_point_extraction_seeds(self.look_from_volume, "Look From Volume", self._get_next_seed())
 
         depsgraph = bpy.context.evaluated_depsgraph_get()
         look_from_coords = self._get_vert_sequence_from_object(self.look_from_volume, depsgraph)
