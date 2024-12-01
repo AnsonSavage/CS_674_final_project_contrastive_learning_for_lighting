@@ -2,9 +2,22 @@ import pathlib
 import argparse
 
 def extract_hdri_name(filename):
-    """Extracts the HDRI name from the file name.
+    """
+    Extracts the HDRI name from the filename.
     
-    e.g., if filename=scene_Blender_2_seed_0_hdri_empty_play_room_4k.png, this returns empty_play_room_4k
+    Args:
+        filename (str): The name of the file to extract the HDRI name from.
+    
+    Returns:
+        str: The extracted HDRI name.
+    
+    Raises:
+        ValueError: If the 'hdri' identifier is not found in the filename.
+        IndexError: If the filename format is unexpected after 'hdri'.
+    
+    Examples:
+        >>> extract_hdri_name("scene_Blender_2_seed_0_hdri_empty_play_room_4k.png")
+        'empty_play_room_4k'
     """
     # Split the filename by the underscore
     parts = filename.split('_')
@@ -21,6 +34,23 @@ def extract_hdri_name(filename):
         raise IndexError(f"Unexpected filename format after 'hdri': {filename}") from e
 
 def extract_scene_name(filename):
+    """
+    Extracts the scene name from the filename.
+    
+    Args:
+        filename (str): The name of the file to extract the scene name from.
+    
+    Returns:
+        str: The extracted scene name.
+    
+    Raises:
+        ValueError: If the 'scene' identifier is not found in the filename.
+        IndexError: If the filename format is unexpected between 'scene' and 'seed'.
+    
+    Examples:
+        >>> extract_scene_name("scene_Blender_2_seed_0_hdri_empty_play_room_4k.png")
+        'Blender_2'
+    """
     # Split the filename by the underscore
     parts = filename.split('_')
     
@@ -37,6 +67,23 @@ def extract_scene_name(filename):
         raise IndexError(f"Unexpected filename format between 'scene' and 'seed': {filename}") from e
 
 def extract_seed_number(filename):
+    """
+    Extracts the seed number from the filename.
+    
+    Args:
+        filename (str): The name of the file to extract the seed number from.
+    
+    Returns:
+        int: The extracted seed number if it is a digit, otherwise None.
+    
+    Raises:
+        ValueError: If the 'seed' identifier is not found in the filename.
+        IndexError: If the filename format is unexpected after 'seed'.
+    
+    Examples:
+        >>> extract_seed_number("scene_Blender_2_seed_0_hdri_empty_play_room_4k.png")
+        0
+    """
     # Split the filename by the underscore
     parts = filename.split('_')
     

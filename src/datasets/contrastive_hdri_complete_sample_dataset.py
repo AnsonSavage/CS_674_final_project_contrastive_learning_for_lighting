@@ -2,7 +2,7 @@ import os
 import random
 from torch.utils.data import Dataset
 from PIL import Image
-from ..utils.training_data_utils import extract_scene_name
+from ..utils.training_data_utils import extract_scene_name, extract_hdri_name
 
 class ContrastiveHDRIDataset(Dataset):
     def __init__(self, image_folder, scene_name):
@@ -11,27 +11,23 @@ class ContrastiveHDRIDataset(Dataset):
         
         # Collect all image paths
         self.images = [f for f in os.listdir(image_folder) if scene_name == extract_scene_name(f)]
+        assert len(self.images) > 0, f"No images found for scene {scene_name}"
         
         # Group images by HDRI
         self.hdri_to_images = {}
         for img_name in self.images:
-            # Extract HDRI name from filename
-            hdri_name = self._extract_hdri_name(img_name)
+            hdri_name = extract_hdri_name(img_name)
             if hdri_name not in self.hdri_to_images:
                 self.hdri_to_images[hdri_name] = []
             self.hdri_to_images[hdri_name].append(img_name)
         
         # Prepare list of HDRI names
         self.hdri_names = list(self.hdri_to_images.keys())
+        # For each key, assert that the number of images is equal
+        assert all(len(self.hdri_to_images[hdri_name]) == len(self.hdri_to_images[self.hdri_names[0]]) for hdri_name in self.hdri_names)
+
         self.num_hdris = len(self.hdri_names)
         
-    def _extract_hdri_name(self, filename):
-        # Custom method to extract HDRI name from filename
-        parts = filename.split('_hdri_')
-        hdri_part = parts[1]
-        hdri_name = hdri_part.split('_4k.png')[0]
-        return hdri_name
-    
     def __len__(self):
         # Return the number of possible batches
         return len(self.images) // self.num_hdris
