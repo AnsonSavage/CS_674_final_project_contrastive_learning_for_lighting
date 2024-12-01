@@ -32,8 +32,8 @@ class CameraSpawner:
         camera = bpy.data.objects.get(self.camera_name)
         assert camera is not None, f"Camera '{self.camera_name}' not found in the scene."
         
-        bpy.data.objects["look_from_visualizer"].location = look_from
-        bpy.data.objects["look_at_visualizer"].location = look_at
+        # bpy.data.objects["look_from_visualizer"].location = look_from
+        # bpy.data.objects["look_at_visualizer"].location = look_at
         
         look_at_matrix = self.compute_look_at_matrix(look_from, look_at)
         

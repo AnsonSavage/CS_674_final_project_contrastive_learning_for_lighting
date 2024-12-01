@@ -1,7 +1,7 @@
 import argparse
 import os
 import sys
-sys.path.append('/home/ansonsav/cs_674/CS_674_final_project_contrastive_learning_for_lighting/src')
+sys.path.append('/home/ansonsav/cs_674/CS_674_final_project_contrastive_learning_for_lighting/src/training_data_generation')
 import logging
 import datetime
 from camera_spawner import CameraSpawner
