@@ -1,6 +1,18 @@
 import torch
 from tqdm import tqdm
 import torch.nn as nn
+import random
+import argparse
+
+def set_seed(seed):
+    """
+    Set seed for reproducibility
+    """
+    random.seed(seed)
+    torch.manual_seed(seed)
+    # np.random.seed(seed)
+    # torch.backends.cudnn.deterministic = True
+    # torch.backends.cudnn.benchmark = False
 
 def train_model(model, train_loader, criterion, optimizer, scheduler, num_epochs, device='cuda'):
     """
@@ -52,25 +64,16 @@ def train_model(model, train_loader, criterion, optimizer, scheduler, num_epochs
     
     return model
 
-# Example usage:
-"""
-model = YourModel()
-train_loader = DataLoader(...)
-criterion = nn.MSELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-scheduler = ReduceLROnPlateau(optimizer, mode='min', patience=3, verbose=True)
-num_epochs = 10
+if __name__ == '__main__':
+    set_seed(42)
+    
+    # Example usage with CosineAnnealingLR:
+    # model = YourModel()
+    # train_loader = DataLoader(...)
+    # criterion = nn.MSELoss()
+    # optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min=0)
 
-trained_model = train_model(model, train_loader, criterion, optimizer, scheduler, num_epochs)
-"""
+    # num_epochs = 10
 
-# Example usage with CosineAnnealingLR:
-model = YourModel()
-train_loader = DataLoader(...)
-criterion = nn.MSELoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min=0)
-
-num_epochs = 10
-
-trained_model = train_model(model, train_loader, criterion, optimizer, scheduler, num_epochs)
+    # trained_model = train_model(model, train_loader, criterion, optimizer, scheduler, num_epochs)

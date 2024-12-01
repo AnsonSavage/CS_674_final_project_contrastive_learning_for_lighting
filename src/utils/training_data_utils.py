@@ -1,6 +1,41 @@
 import pathlib
 import argparse
 
+def extract_hdri_name(filename):
+    """Extracts the HDRI name from the file name.
+    
+    e.g., if filename=scene_Blender_2_seed_0_hdri_empty_play_room_4k.png, this returns empty_play_room_4k
+    """
+    # Split the filename by the underscore
+    parts = filename.split('_')
+    
+    try:
+        # Find the part that contains 'hdri'
+        hdri_index = parts.index('hdri')
+        # The HDRI name is everything after 'hdri' up to the file extension
+        hdri_name_part = '_'.join(parts[hdri_index + 1:]).split('.')[0]
+        return hdri_name_part
+    except ValueError as e:
+        raise ValueError(f"HDRI identifier 'hdri' not found in filename: {filename}") from e
+    except IndexError as e:
+        raise IndexError(f"Unexpected filename format after 'hdri': {filename}") from e
+
+def extract_scene_name(filename):
+    # Split the filename by the underscore
+    parts = filename.split('_')
+    
+    try:
+        # Find the part that contains the scene name
+        scene_index = parts.index('scene')
+        seed_index = parts.index('seed')
+        # The scene name is everything between the scene and seed parts
+        scene_name_part = '_'.join(parts[scene_index + 1:seed_index])
+        return scene_name_part
+    except ValueError as e:
+        raise ValueError(f"Scene identifier 'scene' not found in filename: {filename}") from e
+    except IndexError as e:
+        raise IndexError(f"Unexpected filename format between 'scene' and 'seed': {filename}") from e
+
 def extract_seed_number(filename):
     # Split the filename by the underscore
     parts = filename.split('_')
@@ -11,9 +46,9 @@ def extract_seed_number(filename):
         seed_number_part = parts[seed_index + 1]
         return int(seed_number_part) if seed_number_part.isdigit() else None
     except ValueError as e:
-        return None
+        raise ValueError(f"Seed identifier 'seed' not found in filename: {filename}") from e
     except IndexError as e:
-        return None
+        raise IndexError(f"Unexpected filename format after 'seed': {filename}") from e
 
 # Get the directory from the command line
 # Loop through each item from that directory and extract the seed number
