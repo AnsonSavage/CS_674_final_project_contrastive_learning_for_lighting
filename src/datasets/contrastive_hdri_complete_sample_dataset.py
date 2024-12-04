@@ -7,7 +7,17 @@ import torchvision.transforms as transforms
 from ..utils.training_data_utils import extract_scene_name, extract_hdri_name
 
 class ContrastiveHDRIDataset(Dataset):
-    def __init__(self, image_folder, scene_name, image_height=256, image_width=256):
+    def __init__(self, image_folder, scene_name, image_height=256, image_width=256, total_batches=1000000):
+        """
+        Initialize the ContrastiveHDRIDataset.
+
+        Args:
+            image_folder (str): Path to the folder containing images.
+            scene_name (str): Name of the scene to filter images.
+            image_height (int, optional): Height of the images. Defaults to 256.
+            image_width (int, optional): Width of the images. Defaults to 256.
+            total_batches (int, optional): Total number of batches. Defaults to 1000000. (This is because dataset length is required but getitem is independent of idx and new values are randomly sampled each time)
+        """
         self.image_folder = image_folder
         self.scene_name = scene_name
         
@@ -19,7 +29,7 @@ class ContrastiveHDRIDataset(Dataset):
         self.hdri_to_images = {}
         for img_name in self.images:
             hdri_name = extract_hdri_name(img_name)
-            if hdri_name not in self.hdri_to_images:
+            if (hdri_name not in self.hdri_to_images):
                 self.hdri_to_images[hdri_name] = []
             self.hdri_to_images[hdri_name].append(img_name)
         
@@ -33,12 +43,28 @@ class ContrastiveHDRIDataset(Dataset):
         # Define the transformation to convert images to tensors
         self.transform = transforms.ToTensor()
         self.image_height, self.image_width = image_height, image_width
+        self.total_batches = total_batches  # Added line
         
     def __len__(self):
-        # Return the number of possible batches
-        return len(self.images) // self.num_hdris
+        """
+        Return the total number of batches.
+        Returns:
+            int: Total number of batches.
+        """
+        # NOTE: In other dataset configurations where each image is not randomly selected each time, this would be len(self.images) // self.num_hdris
+        return self.total_batches  
     
     def __getitem__(self, idx, image_mode='RGBA'):
+        """
+        Retrieve a batch of image pairs for contrastive learning.
+
+        Args:
+            idx (int): Index of the batch.
+            image_mode (str, optional): Mode to convert images. Defaults to 'RGBA'.
+
+        Returns:
+            tuple: Two tensors containing batches of image pairs.
+        """
         # For each batch, return n pairs (2n images)
         img1_list = []
         img2_list = []
@@ -71,5 +97,6 @@ class ContrastiveHDRIDataset(Dataset):
         assert img1_tensor.size(3) == self.image_width, "Image width is not equal to specified image width"
 
         # TODO: The question is now whether we do batches of these tensors or whether we treat this as the batch
+        # - Option could be maybe to simply concatenate multiple of these together such that it's still a batch of n*self.num_hdris
         
         return img1_tensor, img2_tensor
