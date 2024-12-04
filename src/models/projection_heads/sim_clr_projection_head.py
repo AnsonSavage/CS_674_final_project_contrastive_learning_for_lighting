@@ -9,3 +9,6 @@ class SimCLRProjectionHead(nn.Module):
             if i < len(layer_sizes) - 2:
                 layers.append(nn.ReLU())
         self.mlp = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.mlp(x)
