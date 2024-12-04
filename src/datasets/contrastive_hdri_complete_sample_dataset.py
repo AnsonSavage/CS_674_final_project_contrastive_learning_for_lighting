@@ -78,6 +78,12 @@ class ContrastiveHDRIDataset(Dataset):
             img1 = Image.open(img1_path).convert(image_mode) # TODO: Experiment to see whether it's better to have the images in RGBA or RGB
             img2 = Image.open(img2_path).convert(image_mode) # NOTE: the difference between the two is simply that when A is included, an additional channel will be present for the alpha. The original three channels remain untouched.
             
+            # Resize images if they are not of the specified size
+            if img1.size != (self.image_width, self.image_height):
+                img1 = img1.resize((self.image_width, self.image_height))
+            if img2.size != (self.image_width, self.image_height):
+                img2 = img2.resize((self.image_width, self.image_height))
+            
             # Apply the transformation to convert images to tensors
             img1 = self.transform(img1)
             img2 = self.transform(img2)

@@ -28,7 +28,7 @@ class ResNetWrapper(nn.Module):
             'resnet152': models.resnet152
         }
 
-        # NOTE: By default, model parameters are trainable when created this way.
+        # NOTE: By default, model parameters are trainable when created this way. While the fc layer will be created, it will not be trained if we do not include it in the forward pass.
         
         if resnet_size in resnet_models:
             self.resnet = resnet_models[resnet_size](pretrained=pretrained)
