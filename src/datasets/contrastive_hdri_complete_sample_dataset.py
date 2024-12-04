@@ -7,7 +7,7 @@ import torchvision.transforms as transforms
 from utils.training_data_utils import extract_scene_name, extract_hdri_name
 
 class ContrastiveHDRIDataset(Dataset):
-    def __init__(self, image_folder, scene_name, image_height=256, image_width=256, total_batches=1000000, extension='.png'):
+    def __init__(self, image_folder, scene_name, image_height=256, image_width=256, total_batches=1000000, extension='.png', image_mode='RGB'):
         """
         Initialize the ContrastiveHDRIDataset.
 
@@ -18,6 +18,7 @@ class ContrastiveHDRIDataset(Dataset):
             image_width (int, optional): Width of the images. Defaults to 256.
             total_batches (int, optional): Total number of batches. Defaults to 1000000.
             extension (str, optional): File extension to include. Defaults to '.png'.
+            image_mode (str, optional): Mode to convert images. Defaults to 'RGB'.
         """
         self.image_folder = image_folder
         self.scene_name = scene_name
@@ -52,6 +53,7 @@ class ContrastiveHDRIDataset(Dataset):
         self.transform = transforms.ToTensor()
         self.image_height, self.image_width = image_height, image_width
         self.total_batches = total_batches
+        self.image_mode = image_mode
         
     def __len__(self):
         """
@@ -62,7 +64,7 @@ class ContrastiveHDRIDataset(Dataset):
         # NOTE: In other dataset configurations where each image is not randomly selected each time, this would be len(self.images) // self.num_hdris
         return self.total_batches  
     
-    def __getitem__(self, idx, image_mode='RGBA'):
+    def __getitem__(self, idx):
         """
         Retrieve a batch of image pairs for contrastive learning.
 
@@ -83,8 +85,8 @@ class ContrastiveHDRIDataset(Dataset):
             img1_path = os.path.join(self.image_folder, img1_name)
             img2_path = os.path.join(self.image_folder, img2_name)
             
-            img1 = Image.open(img1_path).convert(image_mode) # TODO: Experiment to see whether it's better to have the images in RGBA or RGB
-            img2 = Image.open(img2_path).convert(image_mode) # NOTE: the difference between the two is simply that when A is included, an additional channel will be present for the alpha. The original three channels remain untouched.
+            img1 = Image.open(img1_path).convert(self.image_mode) # TODO: Experiment to see whether it's better to have the images in RGBA or RGB
+            img2 = Image.open(img2_path).convert(self.image_mode) # NOTE: the difference between the two is simply that when A is included, an additional channel will be present for the alpha. The original three channels remain untouched.
             
             # Resize images if they are not of the specified size
             if img1.size != (self.image_width, self.image_height):
@@ -106,7 +108,7 @@ class ContrastiveHDRIDataset(Dataset):
         # Assert correct sizes
         assert img1_tensor.size() == img2_tensor.size(), "Image sizes do not match"
         assert img1_tensor.size(0) == self.num_hdris, "Number of images per batch is not equal to number of HDRI"
-        assert img1_tensor.size(1) == len(image_mode), "Number of channels is not equal to number of channels in image mode"
+        assert img1_tensor.size(1) == len(self.image_mode), "Number of channels is not equal to number of channels in image mode"
         assert img1_tensor.size(2) == self.image_height, "Image height is not equal to specified image height"
         assert img1_tensor.size(3) == self.image_width, "Image width is not equal to specified image width"
 

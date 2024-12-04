@@ -1,7 +1,7 @@
 import torch.nn as nn
 
 class SimCLRProjectionHead(nn.Module):
-    def __init__(self, layer_sizes=(2048, 2048, 128)):
+    def __init__(self, layer_sizes=(512, 512, 128)):
         super(SimCLRProjectionHead, self).__init__()
         layers = []
         for i in range(len(layer_sizes) - 1):
