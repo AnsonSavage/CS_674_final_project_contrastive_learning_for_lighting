@@ -63,6 +63,8 @@ def train_model(model, train_loader, criterion, optimizer, scheduler, num_epochs
 if __name__ == '__main__':
     set_seed(42)
     
+    # NOTE: it is possible that we will need to resize images to (224, 224) for ResNet models
+    
     # Example usage with CosineAnnealingLR:
     # model = YourModel()
     # train_loader = DataLoader(...)
