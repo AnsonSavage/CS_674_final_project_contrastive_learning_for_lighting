@@ -54,11 +54,7 @@ def train_model(model, train_loader, criterion, optimizer, scheduler, num_epochs
         # Calculate epoch loss
         epoch_loss = running_loss / len(train_loader)
         
-        # Step scheduler with epoch loss if it's ReduceLROnPlateau, otherwise step normally
-        if isinstance(scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
-            scheduler.step(epoch_loss)
-        else:
-            scheduler.step()
+        scheduler.step()
         
         print(f'Epoch {epoch+1}/{num_epochs} - Loss: {epoch_loss:.4f}')
     
