@@ -33,17 +33,25 @@ def train_model(backbone, projection_head, train_loader, criterion, optimizer, s
         # Progress bar for batches
         pbar = tqdm(train_loader, desc=f'Epoch {epoch+1}/{num_epochs}')
         
-        for batch_idx, (inputs, targets) in enumerate(pbar):
+        for batch_idx, (images_1, images_2) in enumerate(pbar):
             # Move data to device
-            inputs = inputs.to(device)
-            targets = targets.to(device)
+            images_1 = images_1.to(device)
+            images_2 = images_2.to(device)
+
+            complete_batch = torch.cat((images_1, images_2), dim=0) # Currently, the two contrastive losses get concatenated together so that they only have to pass through the network once
             
             # Zero gradients
             optimizer.zero_grad()
             
             # Forward pass
-            outputs = backbone(inputs)
-            loss = criterion(outputs, targets)
+            representations = backbone(complete_batch) # h_i
+            representations = representations.squeeze() # Remove extra dimensions
+            projections = projection_head(representations) # z_i
+
+            assert projections.shape[0] % 2 == 0, "Projections must be split evenly"
+            projections_1, projections_2 = torch.split(projections, projections.shape/2, dim=0)
+
+            loss = criterion(projections_1, projections_2) # Self supervised loss
             
             # Backward pass and optimize
             loss.backward()
@@ -62,8 +70,6 @@ def train_model(backbone, projection_head, train_loader, criterion, optimizer, s
         
         print(f'Epoch {epoch+1}/{num_epochs} - Loss: {epoch_loss:.4f}')
     
-    return backbone
-
 if __name__ == '__main__':
     set_seed(42)
     
@@ -83,7 +89,7 @@ if __name__ == '__main__':
         num_workers=4
     )
 
-    # criterion = nn.MSELoss()
+    criterion = nn.MSELoss()
     # optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
     # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min=0)
 
