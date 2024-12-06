@@ -9,7 +9,13 @@ from models.backbones.res_net_wrapper import ResNetWrapper
 from datasets.contrastive_hdri_complete_sample_dataset import ContrastiveHDRIDataset
 from loss.forced_standard_contrastive_loss import ForcedStandardContrastiveLoss
 
-def set_seed(seed):
+def set_seed(seed: int) -> None:
+    """
+    Set seed for reproducibility.
+
+    Args:
+        seed (int): The seed value to set for random number generators.
+    """
     random.seed(seed)
     torch.manual_seed(seed)
     # np.random.seed(seed)
@@ -17,9 +23,37 @@ def set_seed(seed):
     # torch.backends.cudnn.benchmark = False
 
 
-def get_combined_scheduler(optimizer, num_warmup_steps, num_epochs):
-    def get_scheduler_with_warmup(optimizer, num_warmup_steps):
-        def lr_lambda(current_step):
+def get_combined_scheduler(
+    optimizer: torch.optim.Optimizer, 
+    num_warmup_steps: int, 
+    num_epochs: int
+) -> torch.optim.lr_scheduler.SequentialLR:
+    """
+    Create a combined learning rate scheduler with a warm-up phase followed by cosine annealing.
+
+    Args:
+        optimizer (torch.optim.Optimizer): The optimizer for which to schedule the learning rate.
+        num_warmup_steps (int): The number of steps for the warm-up phase.
+        num_epochs (int): The total number of training epochs.
+
+    Returns:
+        torch.optim.lr_scheduler.SequentialLR: The combined scheduler.
+    """
+    def get_scheduler_with_warmup(
+        optimizer: torch.optim.Optimizer, 
+        num_warmup_steps: int
+    ) -> torch.optim.lr_scheduler.LambdaLR:
+        """
+        Create a LambdaLR scheduler for the warm-up phase.
+
+        Args:
+            optimizer (torch.optim.Optimizer): The optimizer for which to schedule the learning rate.
+            num_warmup_steps (int): The number of steps to linearly increase the learning rate.
+
+        Returns:
+            torch.optim.lr_scheduler.LambdaLR: The warm-up scheduler.
+        """
+        def lr_lambda(current_step: int) -> float:
             if current_step < num_warmup_steps:
                 return float(current_step) / float(max(1, num_warmup_steps))
             raise ValueError(f"Invalid step: {current_step} for warmup scheduler")
@@ -29,7 +63,35 @@ def get_combined_scheduler(optimizer, num_warmup_steps, num_epochs):
     cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs - num_warmup_steps, eta_min=0)
     return torch.optim.lr_scheduler.SequentialLR(optimizer, schedulers=[warmup_scheduler, cosine_scheduler], milestones=[num_warmup_steps])
 
-def train_model(backbone, projection_head, train_loader, criterion, optimizer, scheduler, num_epochs, device='cuda'):
+def train_model(
+    backbone: torch.nn.Module,
+    projection_head: torch.nn.Module,
+    train_loader: DataLoader,
+    criterion,
+    optimizer: torch.optim.Optimizer,
+    scheduler: torch.optim.lr_scheduler.LRScheduler,
+    num_epochs: int,
+    device: str = 'cuda'
+) -> torch.nn.Module:
+    """
+    Train the model using the provided components.
+
+    This function handles the training loop, including forward and backward passes, loss computation,
+    optimizer steps, and scheduler updates.
+
+    Args:
+        backbone (torch.nn.Module): The backbone neural network model.
+        projection_head (torch.nn.Module): The projection head network.
+        train_loader (DataLoader): DataLoader for the training dataset.
+        criterion: Loss function for training.
+        optimizer (torch.optim.Optimizer): Optimizer for updating model parameters.
+        scheduler (torch.optim.lr_scheduler.LRScheduler): Learning rate scheduler.
+        num_epochs (int): Number of epochs to train the model.
+        device (str, optional): Device to run the training on. Defaults to 'cuda'.
+
+    Returns:
+        torch.nn.Module: The trained backbone model.
+    """
     # Move model to device
     backbone = backbone.to(device)
     
@@ -106,7 +168,7 @@ if __name__ == '__main__':
     )
     
     num_epochs = 10
-    num_warmup_steps = 100
+    num_warmup_steps = 10
 
     scheduler = get_combined_scheduler(optimizer, num_warmup_steps, num_epochs)
 
