@@ -4,6 +4,7 @@ from tqdm import tqdm
 import torch.nn as nn
 import random
 import argparse
+import os
 from models.projection_heads.sim_clr_projection_head import SimCLRProjectionHead
 from models.backbones.res_net_wrapper import ResNetWrapper
 from datasets.contrastive_hdri_complete_sample_dataset import ContrastiveHDRIDataset
@@ -33,8 +34,8 @@ def get_combined_scheduler(
 
     Args:
         optimizer (torch.optim.Optimizer): The optimizer for which to schedule the learning rate.
-        num_warmup_steps (int): The number of steps for the warm-up phase.
-        num_epochs (int): The total number of training epochs.
+        num_warmup_steps: int: The number of steps for the warm-up phase.
+        num_epochs: int: The total number of training epochs.
 
     Returns:
         torch.optim.lr_scheduler.SequentialLR: The combined scheduler.
@@ -47,8 +48,8 @@ def get_combined_scheduler(
         Create a LambdaLR scheduler for the warm-up phase.
 
         Args:
-            optimizer (torch.optim.Optimizer): The optimizer for which to schedule the learning rate.
-            num_warmup_steps (int): The number of steps to linearly increase the learning rate.
+            optimizer: torch.optim.Optimizer: The optimizer for which to schedule the learning rate.
+            num_warmup_steps: int: The number of steps to linearly increase the learning rate.
 
         Returns:
             torch.optim.lr_scheduler.LambdaLR: The warm-up scheduler.
@@ -64,6 +65,21 @@ def get_combined_scheduler(
     cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs - num_warmup_steps, eta_min=0)
     return torch.optim.lr_scheduler.SequentialLR(optimizer, schedulers=[warmup_scheduler, cosine_scheduler], milestones=[num_warmup_steps])
 
+def save_checkpoint(state: dict, checkpoint_dir: str, epoch: int) -> None:
+    filename = os.path.join(checkpoint_dir, f'checkpoint_epoch_{epoch}.pth')
+    torch.save(state, filename)
+
+def load_checkpoint(filename: str, backbone: torch.nn.Module, projection_head: torch.nn.Module, optimizer: torch.optim.Optimizer, scheduler: torch.optim.lr_scheduler.LRScheduler) -> int:
+    if os.path.isfile(filename):
+        checkpoint = torch.load(filename)
+        backbone.load_state_dict(checkpoint['backbone_state_dict'])
+        projection_head.load_state_dict(checkpoint['projection_head_state_dict'])
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        epoch = checkpoint['epoch']
+        return epoch
+    return 0
+
 def train_model(
     backbone: torch.nn.Module,
     projection_head: torch.nn.Module,
@@ -72,13 +88,15 @@ def train_model(
     optimizer: torch.optim.Optimizer,
     scheduler: torch.optim.lr_scheduler.LRScheduler,
     num_epochs: int,
-    device: str = 'cuda'
+    device: str = 'cuda',
+    checkpoint_dir: str = None,
+    starting_checkpoint: str = None
 ) -> torch.nn.Module:
     """
     Train the model using the provided components.
 
     This function handles the training loop, including forward and backward passes, loss computation,
-    optimizer steps, and scheduler updates.
+    optimizer steps, scheduler updates, and periodic callbacks.
 
     Args:
         backbone (torch.nn.Module): The backbone neural network model.
@@ -89,6 +107,9 @@ def train_model(
         scheduler (torch.optim.lr_scheduler.LRScheduler): Learning rate scheduler.
         num_epochs (int): Number of epochs to train the model.
         device (str, optional): Device to run the training on. Defaults to 'cuda'.
+        checkpoint_dir (str, optional): Directory to save checkpoints. If None, checkpointing is disabled.
+        callback (callable, optional): Function to execute every `callback_interval` iterations.
+        callback_interval (int, optional): Number of iterations between callback executions. Defaults to 100.
 
     Returns:
         torch.nn.Module: The trained backbone model.
@@ -97,8 +118,10 @@ def train_model(
     backbone = backbone.to(device)
     projection_head = projection_head.to(device)
     
+    start_epoch = load_checkpoint(starting_checkpoint, backbone, projection_head, optimizer, scheduler) if checkpoint_dir is None else 0
+    
     # Training loop
-    for epoch in range(num_epochs):
+    for epoch in range(start_epoch, num_epochs):
         backbone.train()
         projection_head.train()
         running_loss = 0.0
@@ -135,7 +158,7 @@ def train_model(
             
             # Update progress bar
             pbar.set_postfix({'loss': f'{running_loss/(batch_idx+1):.4f}'})
-        
+
         # Calculate epoch loss
         epoch_loss = running_loss / len(train_loader)
         
@@ -147,6 +170,16 @@ def train_model(
         # assert scheduler.get_last_lr() == optimizer.param_groups[0]['lr'], "Learning rate mismatch"
         
         print(f'Epoch {epoch+1}/{num_epochs} - Loss: {epoch_loss:.4f} - Learning Rate: {optimizer.param_groups[0]["lr"]}')
+        
+        # Save checkpoint at the end of each epoch if checkpoint_dir is provided
+        if checkpoint_dir:
+            save_checkpoint({
+                'epoch': epoch + 1,
+                'backbone_state_dict': backbone.state_dict(),
+                'projection_head_state_dict': projection_head.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
+            }, checkpoint_dir, epoch + 1)
     
 if __name__ == '__main__':
     set_seed(42)
@@ -178,7 +211,17 @@ if __name__ == '__main__':
 
     scheduler = get_combined_scheduler(optimizer, num_warmup_steps, num_epochs)
 
-    trained_model = train_model(backbone, projection_head, train_loader, criterion, optimizer, scheduler, num_epochs, device='cuda')
+    trained_model = train_model(
+        backbone, 
+        projection_head, 
+        train_loader, 
+        criterion, 
+        optimizer, 
+        scheduler, 
+        num_epochs, 
+        device='cuda',
+        checkpoint_dir='/path/to/checkpoints',  # Replace with desired directory or set to None
+    )
 
 """
 When running this code:
