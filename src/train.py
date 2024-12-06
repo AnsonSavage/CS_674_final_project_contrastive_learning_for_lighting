@@ -43,8 +43,8 @@ def train_model(backbone, projection_head, train_loader, criterion, optimizer, s
         
         for batch_idx, (images_1, images_2) in enumerate(pbar):
             # Move data to device
-            images_1 = images_1.to(device)
-            images_2 = images_2.to(device)
+            images_1 = images_1.to(device).squeeze(0) # NOTE: In current implementation, the dataloader automatically loads a batch of 12, and so we are squeezing the batch dimension
+            images_2 = images_2.to(device).squeeze(0)
 
             complete_batch = torch.cat((images_1, images_2), dim=0) # Currently, the two contrastive losses get concatenated together so that they only have to pass through the network once
             
@@ -52,12 +52,12 @@ def train_model(backbone, projection_head, train_loader, criterion, optimizer, s
             optimizer.zero_grad()
             
             # Forward pass
-            representations = backbone(complete_batch) # h_i
-            representations = representations.squeeze() # Remove extra dimensions
-            projections = projection_head(representations) # z_i
+            representations = backbone(complete_batch) # h_i, (2*batch_size, num_channels, 1, 1)
+            representations = representations.squeeze() # After convolutional layers, the output is (2*batch_size, num_channels, 1, 1), so we squeeze the last two dimensions, (2*batch_size, num_channels)
+            projections = projection_head(representations) # z_i, (2*batch_size, projection_dim)
 
             assert projections.shape[0] % 2 == 0, "Projections must be split evenly"
-            projections_1, projections_2 = torch.split(projections, projections.shape/2, dim=0)
+            projections_1, projections_2 = torch.chunk(projections, 2, dim=0)
 
             loss = criterion(projections_1, projections_2) # Self supervised loss
             
@@ -75,15 +75,17 @@ def train_model(backbone, projection_head, train_loader, criterion, optimizer, s
         epoch_loss = running_loss / len(train_loader)
         
         scheduler.step()
+
+        # I'm not sure if these should return the same learning rate or not, this is an experiment
+        assert scheduler.get_last_lr() == optimizer.param_groups[0]['lr'], "Learning rate mismatch"
         
-        print(f'Epoch {epoch+1}/{num_epochs} - Loss: {epoch_loss:.4f}')
+        print(f'Epoch {epoch+1}/{num_epochs} - Loss: {epoch_loss:.4f} - Learning Rate: {optimizer.param_groups[0]["lr"]}')
     
 if __name__ == '__main__':
     set_seed(42)
     
     # NOTE: After going through the ResNetWrapper, both input images of size (3, 224, 224) and (3, 256, 256) come out to be (512, 1, 1) in size. I'm not sure if it resizes it internally, but it looks like keeping it at our default size of (3, 256, 256) is fine.
     
-    # Example usage with CosineAnnealingLR:
     backbone = ResNetWrapper('resnet18')
     projection_head = SimCLRProjectionHead()
     dataset = ContrastiveHDRIDataset(
@@ -108,7 +110,7 @@ if __name__ == '__main__':
 
     scheduler = get_combined_scheduler(optimizer, num_warmup_steps, num_epochs)
 
-    trained_model = train_model(backbone, projection_head, train_loader, criterion, optimizer, scheduler, num_epochs)
+    trained_model = train_model(backbone, projection_head, train_loader, criterion, optimizer, scheduler, num_epochs, device='cpu')
 
 """
 When running this code:
