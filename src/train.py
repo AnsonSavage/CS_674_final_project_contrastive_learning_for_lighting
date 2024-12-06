@@ -7,21 +7,29 @@ import argparse
 from models.projection_heads.sim_clr_projection_head import SimCLRProjectionHead
 from models.backbones.res_net_wrapper import ResNetWrapper
 from datasets.contrastive_hdri_complete_sample_dataset import ContrastiveHDRIDataset
+from loss.forced_standard_contrastive_loss import ForcedStandardContrastiveLoss
 
 def set_seed(seed):
-    """
-    Set seed for reproducibility
-    """
     random.seed(seed)
     torch.manual_seed(seed)
     # np.random.seed(seed)
     # torch.backends.cudnn.deterministic = True
     # torch.backends.cudnn.benchmark = False
 
+
+def get_combined_scheduler(optimizer, num_warmup_steps, num_epochs):
+    def get_scheduler_with_warmup(optimizer, num_warmup_steps):
+        def lr_lambda(current_step):
+            if current_step < num_warmup_steps:
+                return float(current_step) / float(max(1, num_warmup_steps))
+            raise ValueError(f"Invalid step: {current_step} for warmup scheduler")
+        return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+
+    warmup_scheduler = get_scheduler_with_warmup(optimizer, num_warmup_steps)
+    cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs - num_warmup_steps, eta_min=0)
+    return torch.optim.lr_scheduler.SequentialLR(optimizer, schedulers=[warmup_scheduler, cosine_scheduler], milestones=[num_warmup_steps])
+
 def train_model(backbone, projection_head, train_loader, criterion, optimizer, scheduler, num_epochs, device='cuda'):
-    """
-    Standard training loop for PyTorch model
-    """
     # Move model to device
     backbone = backbone.to(device)
     
@@ -89,13 +97,18 @@ if __name__ == '__main__':
         num_workers=4
     )
 
-    criterion = nn.MSELoss()
-    # optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-    # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min=0)
+    criterion = ForcedStandardContrastiveLoss()
+    optimizer = torch.optim.Adam(
+        list(backbone.parameters()) + list(projection_head.parameters()), # We want to optimize both the backbone and the projection head. len(list(backbone.parameters())) is 62 for resnet18
+        lr=0.001
+    )
+    
+    num_epochs = 10
+    num_warmup_steps = 100
 
-    # num_epochs = 10
+    scheduler = get_combined_scheduler(optimizer, num_warmup_steps, num_epochs)
 
-    # trained_model = train_model(model, train_loader, criterion, optimizer, scheduler, num_epochs)
+    trained_model = train_model(backbone, projection_head, train_loader, criterion, optimizer, scheduler, num_epochs)
 
 """
 When running this code:

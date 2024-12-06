@@ -5,7 +5,8 @@ import torch
 # TODO: Step through all of the math and convince yourself that it is correct
 
 class ForcedStandardContrastiveLoss(torch.nn.Module):
-    def __init__(self, temperature):
+    def __init__(self, temperature = 0.1):
+        # In the paper, a temperature of 0.1 yielded the highest performance
         super(ForcedStandardContrastiveLoss, self).__init__()
         self.temperature = temperature # Temperature values greater than 1 will smooth the distribution and values less than 1 will sharpen the distribution
 
@@ -73,6 +74,8 @@ class ForcedStandardContrastiveLoss(torch.nn.Module):
         # Compute log probabilities
         # Perform subtraction in the log space (the logits remain in their original state because log(exp(x)) = x)
         # This is equivalent to performing a log of exp_logits/sum_exp_negatives
+        # TODO: after torch.log(), any entries that are 0 become -inf. If you subtract -inf from any real number, you get inf. How is this handled?
+        # Oh, but maybe we won't have any zero values because we did a sum along the rows
         log_prob = logits - torch.log(sum_exp_negatives)
 
         # Only keep positive log probabilities
