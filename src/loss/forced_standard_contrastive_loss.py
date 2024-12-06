@@ -66,6 +66,9 @@ class ForcedStandardContrastiveLoss(torch.nn.Module):
         # Exponentiate the logits, giving us the main values that will be used in both the numerator and denominator
         exp_logits = torch.exp(logits)
 
+        # TODO: This seems to be avoiding negative loss values if we also include the i=j pairs in the denominator. Is this what we want? Also, the smallest exp(logits) can be is 1, so the smallest log(exp(logits)) can be is 1/e. So it seems like there is a limit to how close to 0 the loss can get
+        # Experiment, what if we just set the negative_mask to be the opposite of the positive mask?
+        negative_mask = ~positive_mask
         
         # The rows represent i and the columns represent k. So, each row corresponds to the i part of the (i, j) loss, but we still loop over all k and sum the negative pair cosine similarities
         # By applying the negative_mask, we have excluded all i == k pairs and all i == j pairs
@@ -74,8 +77,6 @@ class ForcedStandardContrastiveLoss(torch.nn.Module):
         # Compute log probabilities
         # Perform subtraction in the log space (the logits remain in their original state because log(exp(x)) = x)
         # This is equivalent to performing a log of exp_logits/sum_exp_negatives
-        # TODO: after torch.log(), any entries that are 0 become -inf. If you subtract -inf from any real number, you get inf. How is this handled?
-        # Oh, but maybe we won't have any zero values because we did a sum along the rows
         log_prob = logits - torch.log(sum_exp_negatives)
 
         # Only keep positive log probabilities

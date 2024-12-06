@@ -60,6 +60,7 @@ def get_combined_scheduler(
         return torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
 
     warmup_scheduler = get_scheduler_with_warmup(optimizer, num_warmup_steps)
+    assert num_epochs > num_warmup_steps, "Number of epochs must be greater than the number of warm-up steps"
     cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs - num_warmup_steps, eta_min=0)
     return torch.optim.lr_scheduler.SequentialLR(optimizer, schedulers=[warmup_scheduler, cosine_scheduler], milestones=[num_warmup_steps])
 
@@ -94,10 +95,12 @@ def train_model(
     """
     # Move model to device
     backbone = backbone.to(device)
+    projection_head = projection_head.to(device)
     
     # Training loop
     for epoch in range(num_epochs):
         backbone.train()
+        projection_head.train()
         running_loss = 0.0
         
         # Progress bar for batches
@@ -139,7 +142,9 @@ def train_model(
         scheduler.step()
 
         # I'm not sure if these should return the same learning rate or not, this is an experiment
-        assert scheduler.get_last_lr() == optimizer.param_groups[0]['lr'], "Learning rate mismatch"
+        print("Learning rate from optimizer: ", optimizer.param_groups[0]['lr'])
+        print("Learning rate from scheduler: ", scheduler.get_last_lr())
+        # assert scheduler.get_last_lr() == optimizer.param_groups[0]['lr'], "Learning rate mismatch"
         
         print(f'Epoch {epoch+1}/{num_epochs} - Loss: {epoch_loss:.4f} - Learning Rate: {optimizer.param_groups[0]["lr"]}')
     
@@ -153,6 +158,7 @@ if __name__ == '__main__':
     dataset = ContrastiveHDRIDataset(
         image_folder='/home/ansonsav/cs_674/CS_674_final_project_contrastive_learning_for_lighting/training_data/test_1',
         scene_name='lone-monk_cycles_and_exposure-node_demo',
+        total_batches=10,
         )
     train_loader = DataLoader(
         dataset,
@@ -167,12 +173,12 @@ if __name__ == '__main__':
         lr=0.001
     )
     
-    num_epochs = 10
-    num_warmup_steps = 10
+    num_epochs = 1000
+    num_warmup_steps = 2
 
     scheduler = get_combined_scheduler(optimizer, num_warmup_steps, num_epochs)
 
-    trained_model = train_model(backbone, projection_head, train_loader, criterion, optimizer, scheduler, num_epochs, device='cpu')
+    trained_model = train_model(backbone, projection_head, train_loader, criterion, optimizer, scheduler, num_epochs, device='cuda')
 
 """
 When running this code:
