@@ -1,12 +1,28 @@
 #TODO: This datasset will be responsible for loading an image along with whatever label is intended to be classified. The labels are associated with the HDRI that was used to light the given image
 
-from hdri_dataset import HDRIDataset
+from .hdri_dataset import HDRIDataset
 import os
 import json
 import torch
 
 class HDRIFeatureClassificationDataset(HDRIDataset):
-    def __init__(self, rendered_image_folder, hdri_parent_folder, scene_name=None, image_height=256, image_width=256, extension='.png', image_mode='RGB'):
+    def __init__(self, rendered_image_folder, hdri_parent_folder, scene_name=None, image_height=256, image_width=256, extension='.png', image_mode='RGB',
+                 categories_to_index = {
+                    'indoor': 0,
+                    'outdoor': 1,
+
+                    'artificial light': 2,
+                    'natural light': 3,
+
+                    'low contrast': 4,
+                    'medium contrast': 5,
+                    'high contrast': 6,
+
+                    'morning/afternoon': 7,
+                    'night': 8,
+                    'sunrise/sunset': 9
+                 }
+                 ):
         """
         Initialize the HDRIFeatureClassificationDataset.
 
@@ -23,34 +39,19 @@ class HDRIFeatureClassificationDataset(HDRIDataset):
         super(HDRIFeatureClassificationDataset, self).__init__(rendered_image_folder, scene_name, image_height, image_width, extension, image_mode)
         self.hdri_name_to_metadata = self._load_metadata(hdri_parent_folder)
         self.validate_metadata()
+        self.categories_to_index = categories_to_index
         self.hdri_to_one_hot = self._precompute_hdri_to_one_hot()
 
-        self.categories_to_index = {
-            'indoor': 0,
-            'outdoor': 1,
-
-            'artificial light': 2,
-            'natural light': 3,
-
-            'low contrast': 4,
-            'medium contrast': 5,
-            'high contrast': 6,
-
-            'morning/afternoon': 7,
-            'night': 8,
-            'sunrise/sunset': 9
-        }
-
-        # So, some other things we need to do: 
-    
     def __len__(self):
         return len(self.images)
     
-    def __getitem__(self, idx):
+    def __getitem__(self, idx, return_name=False):
         img_name = self.images[idx]
         hdri_name = self.images_to_hdri[img_name]
         img_tensor = self.get_image_tensor_by_name(img_name)
         one_hot = self.hdri_to_one_hot[hdri_name]
+        if return_name:
+            return img_tensor, one_hot, img_name
         return img_tensor, one_hot
     
     def _load_metadata(self, hdri_parent_folder):
@@ -98,7 +99,7 @@ class HDRIFeatureClassificationDataset(HDRIDataset):
 
     def _hdri_to_one_hot(self, hdri_name):
         hdri_categories = self.hdri_name_to_metadata[hdri_name]['categories']
-        one_hot_vector = torch.zeros(len(self.categories_to_index))
+        one_hot_vector = torch.zeros(len(self.categories_to_index), dtype=torch.float32)
         for category in hdri_categories:
             if category in self.categories_to_index:
                 one_hot_vector[self.categories_to_index[category]] = 1

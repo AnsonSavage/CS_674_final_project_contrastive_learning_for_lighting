@@ -71,21 +71,3 @@ class ContrastiveHDRIDataset(HDRIDataset):
         
         return img1_tensor, img2_tensor
     
-    def get_image_tensor_by_name(self, image_name):
-        """
-        Retrieve a tensor for a single image by name.
-
-        Args:
-            image_name (str): Name of the image.
-
-        Returns:
-            torch.Tensor: Tensor containing the image.
-        """
-        img_path = os.path.join(self.image_folder, image_name)
-        img = Image.open(img_path).convert(self.image_mode)
-        if img.size != (self.image_width, self.image_height):
-            img = img.resize((self.image_width, self.image_height))
-
-        # Apply transformation to convert image to tensor
-        img = self.transform(img)
-        return img

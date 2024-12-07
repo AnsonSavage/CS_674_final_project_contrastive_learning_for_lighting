@@ -1,7 +1,7 @@
 import pathlib
 import argparse
 
-def extract_hdri_name(filename):
+def extract_hdri_name(filename, include_resolution=False):
     """
     Extracts the HDRI name from the filename.
     
@@ -17,6 +17,8 @@ def extract_hdri_name(filename):
     
     Examples:
         >>> extract_hdri_name("scene_Blender_2_seed_0_hdri_empty_play_room_4k.png")
+        'empty_play_room'
+        >>> extract_hdri_name("scene_Blender_2_seed_0_hdri_empty_play_room_4k.png", include_resolution=True)
         'empty_play_room_4k'
     """
     # Split the filename by the underscore
@@ -27,7 +29,9 @@ def extract_hdri_name(filename):
         hdri_index = parts.index('hdri')
         # The HDRI name is everything after 'hdri' up to the file extension
         hdri_name_part = '_'.join(parts[hdri_index + 1:]).split('.')[0]
-        return hdri_name_part
+        if include_resolution:
+            return hdri_name_part
+        return '_'.join(hdri_name_part.split('_')[:-1])
     except ValueError as e:
         raise ValueError(f"HDRI identifier 'hdri' not found in filename: {filename}") from e
     except IndexError as e:

@@ -103,7 +103,7 @@ def scrape_polyhaven_asset(url, directory):
         url (str): URL of the Poly Haven asset page
         directory (str): Directory to save the JSON file
     """
-    hdri_name = url.rstrip('/').split('/')[-1]
+    hdri_name = url.rstrip('/').split('/')[-1].lower()
     hdri_dir = os.path.join(directory, hdri_name)
     os.makedirs(hdri_dir, exist_ok=True)
 
