@@ -3,10 +3,9 @@ import random
 import torch
 from torch.utils.data import Dataset
 from PIL import Image
-import torchvision.transforms as transforms
-from utils.training_data_utils import extract_scene_name, extract_hdri_name
+from hdri_dataset import HDRIDataset
 
-class ContrastiveHDRIDataset(Dataset):
+class ContrastiveHDRIDataset(HDRIDataset):
     def __init__(self, image_folder, scene_name, image_height=256, image_width=256, total_batches=1000000, extension='.png', image_mode='RGB'):
         """
         Initialize the ContrastiveHDRIDataset.
@@ -20,44 +19,14 @@ class ContrastiveHDRIDataset(Dataset):
             extension (str, optional): File extension to include. Defaults to '.png'.
             image_mode (str, optional): Mode to convert images. Defaults to 'RGB'.
         """
-        self.image_folder = image_folder
-        self.scene_name = scene_name
-        self.extension = extension.lower()
-        
-        # Collect all image paths with the specified extension
-        self.images = [
-            f for f in os.listdir(image_folder)
-            if f.lower().endswith(self.extension) and scene_name == extract_scene_name(f)
-        ]
-        assert len(self.images) > 0, f"No images found for scene {scene_name} with extension {self.extension}"
-        
-        # Group images by HDRI
-        self.hdri_to_images = {}
-        for img_name in self.images:
-            hdri_name = extract_hdri_name(img_name)
-            if hdri_name not in self.hdri_to_images:
-                self.hdri_to_images[hdri_name] = []
-            self.hdri_to_images[hdri_name].append(img_name)
-        
-        # Prepare list of HDRI names
-        self.hdri_names = list(self.hdri_to_images.keys())
-        # Ensure equal number of images per HDRI
-        assert all(
-            len(self.hdri_to_images[hdri_name]) == len(self.hdri_to_images[self.hdri_names[0]])
-            for hdri_name in self.hdri_names
-        ), "Number of images per HDRI is not equal"
-
-        self.num_hdris = len(self.hdri_names)
-        
-        # Define the transformation to convert images to tensors
-        self.transform = transforms.ToTensor()
-        self.image_height, self.image_width = image_height, image_width
+        # Call parent constructor
+        super(ContrastiveHDRIDataset, self).__init__(image_folder, scene_name, image_height, image_width, extension, image_mode)
         self.total_batches = total_batches
-        self.image_mode = image_mode
         
     def __len__(self):
         """
         Return the total number of batches.
+
         Returns:
             int: Total number of batches.
         """
@@ -82,24 +51,9 @@ class ContrastiveHDRIDataset(Dataset):
             images = self.hdri_to_images[hdri_name]
             # Randomly select two images with the same HDRI
             img1_name, img2_name = random.sample(images, 2)
-            img1_path = os.path.join(self.image_folder, img1_name)
-            img2_path = os.path.join(self.image_folder, img2_name)
-            
-            img1 = Image.open(img1_path).convert(self.image_mode) # TODO: Experiment to see whether it's better to have the images in RGBA or RGB
-            img2 = Image.open(img2_path).convert(self.image_mode) # NOTE: the difference between the two is simply that when A is included, an additional channel will be present for the alpha. The original three channels remain untouched.
-            
-            # Resize images if they are not of the specified size
-            if img1.size != (self.image_width, self.image_height):
-                img1 = img1.resize((self.image_width, self.image_height))
-            if img2.size != (self.image_width, self.image_height):
-                img2 = img2.resize((self.image_width, self.image_height))
-            
-            # Apply the transformation to convert images to tensors
-            img1 = self.transform(img1)
-            img2 = self.transform(img2)
-            
-            img1_list.append(img1)
-            img2_list.append(img2)
+
+            img1_list.append(self.get_image_tensor_by_name(img1_name))
+            img2_list.append(self.get_image_tensor_by_name(img2_name))
         
         # Stack tensors
         img1_tensor = torch.stack(img1_list)
@@ -116,3 +70,22 @@ class ContrastiveHDRIDataset(Dataset):
         # - Option could be maybe to simply concatenate multiple of these together such that it's still a batch of n*self.num_hdris
         
         return img1_tensor, img2_tensor
+    
+    def get_image_tensor_by_name(self, image_name):
+        """
+        Retrieve a tensor for a single image by name.
+
+        Args:
+            image_name (str): Name of the image.
+
+        Returns:
+            torch.Tensor: Tensor containing the image.
+        """
+        img_path = os.path.join(self.image_folder, image_name)
+        img = Image.open(img_path).convert(self.image_mode)
+        if img.size != (self.image_width, self.image_height):
+            img = img.resize((self.image_width, self.image_height))
+
+        # Apply transformation to convert image to tensor
+        img = self.transform(img)
+        return img
