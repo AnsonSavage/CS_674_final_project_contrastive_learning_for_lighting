@@ -5,3 +5,4 @@ blender-4.3.0-linux-x64
 *.png
 *.PNG
 *.log
+*.pth

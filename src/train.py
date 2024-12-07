@@ -65,8 +65,20 @@ def get_combined_scheduler(
     cosine_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_epochs - num_warmup_steps, eta_min=0)
     return torch.optim.lr_scheduler.SequentialLR(optimizer, schedulers=[warmup_scheduler, cosine_scheduler], milestones=[num_warmup_steps])
 
-def save_checkpoint(state: dict, checkpoint_dir: str, epoch: int) -> None:
-    filename = os.path.join(checkpoint_dir, f'checkpoint_epoch_{epoch}.pth')
+def save_checkpoint(state: dict, checkpoint_dir: str, epoch: int, loss: float = None) -> None:
+    """
+    Save the training checkpoint.
+
+    Args:
+        state (dict): State dictionary containing model and optimizer states.
+        checkpoint_dir (str): Directory to save the checkpoint.
+        epoch (int): Current epoch number.
+        loss (float, optional): Epoch loss to include in the filename. Defaults to None.
+    """
+    if loss is not None:
+        filename = os.path.join(checkpoint_dir, f'checkpoint_epoch_{epoch}_loss_{loss:.4f}.pth')
+    else:
+        filename = os.path.join(checkpoint_dir, f'checkpoint_epoch_{epoch}.pth')
     torch.save(state, filename)
 
 def load_checkpoint(filename: str, backbone: torch.nn.Module, projection_head: torch.nn.Module, optimizer: torch.optim.Optimizer, scheduler: torch.optim.lr_scheduler.LRScheduler) -> int:
@@ -108,8 +120,7 @@ def train_model(
         num_epochs (int): Number of epochs to train the model.
         device (str, optional): Device to run the training on. Defaults to 'cuda'.
         checkpoint_dir (str, optional): Directory to save checkpoints. If None, checkpointing is disabled.
-        callback (callable, optional): Function to execute every `callback_interval` iterations.
-        callback_interval (int, optional): Number of iterations between callback executions. Defaults to 100.
+        starting_checkpoint (str, optional): Path to a starting checkpoint. Defaults to None.
 
     Returns:
         torch.nn.Module: The trained backbone model.
@@ -179,13 +190,22 @@ def train_model(
                 'projection_head_state_dict': projection_head.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'scheduler_state_dict': scheduler.state_dict(),
-            }, checkpoint_dir, epoch + 1)
+            }, checkpoint_dir, epoch + 1, loss=epoch_loss)
     
 if __name__ == '__main__':
     set_seed(42)
     
     # NOTE: After going through the ResNetWrapper, both input images of size (3, 224, 224) and (3, 256, 256) come out to be (512, 1, 1) in size. I'm not sure if it resizes it internally, but it looks like keeping it at our default size of (3, 256, 256) is fine.
     
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Train Contrastive Learning Model')
+    parser.add_argument('--num_epochs', type=int, default=1000, help='Number of training epochs')
+    parser.add_argument('--num_warmpup_steps', type=int, default=10, help='Number of warmup steps for learning rate scheduler')
+    parser.add_argument('--learning_rate', type=float, default=0.001, help='Learning rate for optimizer')
+    parser.add_argument('--checkpoint_dir', type=str, default=None, help='Directory to save checkpoints')
+    args = parser.parse_args()
+
     backbone = ResNetWrapper('resnet18')
     projection_head = SimCLRProjectionHead()
     dataset = ContrastiveHDRIDataset(
@@ -203,11 +223,11 @@ if __name__ == '__main__':
     criterion = ForcedStandardContrastiveLoss()
     optimizer = torch.optim.Adam(
         list(backbone.parameters()) + list(projection_head.parameters()), # We want to optimize both the backbone and the projection head. len(list(backbone.parameters())) is 62 for resnet18
-        lr=0.001
+        lr=args.learning_rate
     )
     
-    num_epochs = 1000
-    num_warmup_steps = 2
+    num_epochs = args.num_epochs
+    num_warmup_steps = args.num_warmpup_steps
 
     scheduler = get_combined_scheduler(optimizer, num_warmup_steps, num_epochs)
 
@@ -220,7 +240,7 @@ if __name__ == '__main__':
         scheduler, 
         num_epochs, 
         device='cuda',
-        checkpoint_dir='/path/to/checkpoints',  # Replace with desired directory or set to None
+        checkpoint_dir=args.checkpoint_dir,
     )
 
 """
