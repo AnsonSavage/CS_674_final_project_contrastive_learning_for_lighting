@@ -43,7 +43,7 @@ for category in all_categories:
     print(category)
 
 
-# So, a one-hot encoded vector for each category would be:
+# So, a multi-hot encoded vector for each category would be:
 
 # Indoor/outdoor
 # index 0: indoor

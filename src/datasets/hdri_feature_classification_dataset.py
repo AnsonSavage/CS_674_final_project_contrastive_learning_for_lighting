@@ -40,7 +40,7 @@ class HDRIFeatureClassificationDataset(HDRIDataset):
         self.hdri_name_to_metadata = self._load_metadata(hdri_parent_folder)
         self.validate_metadata()
         self.categories_to_index = categories_to_index
-        self.hdri_to_one_hot = self._precompute_hdri_to_one_hot()
+        self.hdri_to_multi_hot = self._precompute_hdri_to_multi_hot()
 
     def __len__(self):
         return len(self.images)
@@ -49,10 +49,10 @@ class HDRIFeatureClassificationDataset(HDRIDataset):
         img_name = self.images[idx]
         hdri_name = self.images_to_hdri[img_name]
         img_tensor = self.get_image_tensor_by_name(img_name)
-        one_hot = self.hdri_to_one_hot[hdri_name]
+        multi_hot = self.hdri_to_multi_hot[hdri_name]
         if return_name:
-            return img_tensor, one_hot, img_name
-        return img_tensor, one_hot
+            return img_tensor, multi_hot, img_name
+        return img_tensor, multi_hot
     
     def _load_metadata(self, hdri_parent_folder):
         hdri_name_to_metadata = {}
@@ -91,18 +91,18 @@ class HDRIFeatureClassificationDataset(HDRIDataset):
 
             all_data = all_data.union(set(categories_for_data))
     
-    def _precompute_hdri_to_one_hot(self):
-        hdri_to_one_hot = {}
+    def _precompute_hdri_to_multi_hot(self):
+        hdri_to_multi_hot = {}
         for hdri_name in self.hdri_names:
-            hdri_to_one_hot[hdri_name] = self._hdri_to_one_hot(hdri_name)
-        return hdri_to_one_hot
+            hdri_to_multi_hot[hdri_name] = self._hdri_to_multi_hot(hdri_name)
+        return hdri_to_multi_hot
 
-    def _hdri_to_one_hot(self, hdri_name):
+    def _hdri_to_multi_hot(self, hdri_name):
         hdri_categories = self.hdri_name_to_metadata[hdri_name]['categories']
-        one_hot_vector = torch.zeros(len(self.categories_to_index), dtype=torch.float32)
+        multi_hot_vector = torch.zeros(len(self.categories_to_index), dtype=torch.float32)
         for category in hdri_categories:
             if category in self.categories_to_index:
-                one_hot_vector[self.categories_to_index[category]] = 1
-        return one_hot_vector
+                multi_hot_vector[self.categories_to_index[category]] = 1
+        return multi_hot_vector
     
     # TODO: Does the hdri name contain the resolution (e.g., _4k?)

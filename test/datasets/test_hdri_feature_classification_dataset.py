@@ -30,17 +30,17 @@ class TestHDRIFeatureClassificationDataset(unittest.TestCase):
     def test_getitem(self):
         dataset = HDRIFeatureClassificationDataset(self.rendered_image_folder, self.hdri_parent_folder, self.scene_name, self.image_height, self.image_width, self.extension, self.image_mode)
 
-        expected_image_name_to_one_hot_vector = {
+        expected_image_name_to_multi_hot_vector = {
             'scene_lone-monk_cycles_and_exposure-node_demo_seed_0_hdri_empty_play_room_4k.png': torch.tensor([1, 0, 1, 1, 0, 1, 0, 1, 0, 0], dtype=torch.float32),
             'scene_lone-monk_cycles_and_exposure-node_demo_seed_0_hdri_rogland_moonlit_night_4k.png': torch.tensor([0, 1, 0, 1, 0, 0, 1, 0, 1, 0], dtype=torch.float32),
         }
 
         for _ in range(12):
-            image, one_hot, image_name = dataset.__getitem__(0, return_name=True)
-            if image_name in expected_image_name_to_one_hot_vector:
-                self.assertTrue(torch.equal(one_hot, expected_image_name_to_one_hot_vector[image_name]), f"Expected one-hot vector {expected_image_name_to_one_hot_vector[image_name]}, but got {one_hot}")
+            image, multi_hot, image_name = dataset.__getitem__(0, return_name=True)
+            if image_name in expected_image_name_to_multi_hot_vector:
+                self.assertTrue(torch.equal(multi_hot, expected_image_name_to_multi_hot_vector[image_name]), f"Expected multi-hot vector {expected_image_name_to_multi_hot_vector[image_name]}, but got {multi_hot}")
 
-        # TODO: We need to reconsider something: We can either adjust the __getitem__ method to return several one-hot vectors representing each of the categories, or we can figure out a new loss function for multiclass classification.
+        # TODO: We need to reconsider something: We can either adjust the __getitem__ method to return several multi-hot vectors representing each of the categories, or we can figure out a new loss function for multiclass classification.
 
 if __name__ == '__main__':
     unittest.main()
