@@ -3,7 +3,7 @@ import random
 import torch
 from torch.utils.data import Dataset
 from PIL import Image
-from hdri_dataset import HDRIDataset
+from .hdri_dataset import HDRIDataset
 
 class ContrastiveHDRIDataset(HDRIDataset):
     def __init__(self, image_folder, scene_name, image_height=256, image_width=256, total_batches=1000000, extension='.png', image_mode='RGB'):
