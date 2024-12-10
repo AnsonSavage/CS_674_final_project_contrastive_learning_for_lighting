@@ -125,6 +125,16 @@ def evaluate_model(backbone, classifier, test_loader, criterion, device='cuda'):
     print(f'Test Loss: {test_loss:.4f} - Test Accuracy: {accuracy:.2f}%')
     return test_loss, accuracy
 
+def get_data_loaders(dataset, batch_size, num_workers):
+    train_size = int(0.85 * len(dataset))
+    val_size = int(0.05 * len(dataset))
+    test_size = len(dataset) - train_size - val_size
+    train_dataset, val_dataset, test_dataset = random_split(dataset, [train_size, val_size, test_size])
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+    return train_loader, val_loader, test_loader
+
 def main():
     set_seed(42)
     parser = argparse.ArgumentParser(description='Train or Evaluate Linear Classifier on Frozen Backbone')
@@ -136,6 +146,11 @@ def main():
     parser.add_argument('--backbone_checkpoint', type=str, required=True, help='Path to the backbone checkpoint')
     parser.add_argument('--classifier_checkpoint', type=str, help='Path to the classifier checkpoint (required for evaluation)')
     parser.add_argument('--device', type=str, default='cuda', help='Device to use for training/evaluation')
+    parser.add_argument('--batch_size', type=int, default=64, help='Batch size for DataLoaders')
+    parser.add_argument('--num_workers', type=int, default=4, help='Number of workers for DataLoaders')
+    parser.add_argument('--rendered_image_folder', type=str, required=True, help='Path to rendered image folder')
+    parser.add_argument('--hdri_parent_folder', type=str, required=True, help='Path to HDRI parent folder')
+    parser.add_argument('--scene_name', type=str, required=True, help='Scene name for the dataset')
     args = parser.parse_args()
 
     device = torch.device(args.device if torch.cuda.is_available() else 'cpu')
@@ -149,24 +164,19 @@ def main():
     for param in backbone.parameters():
         param.requires_grad = False
     
+    # Prepare Dataset and DataLoaders
+    dataset = HDRIFeatureClassificationDataset(
+        rendered_image_folder=args.rendered_image_folder,
+        hdri_parent_folder=args.hdri_parent_folder,
+        scene_name=args.scene_name,
+    )
+    train_loader, val_loader, test_loader = get_data_loaders(dataset, args.batch_size, args.num_workers)
+
     if args.mode == 'train':
         # Initialize Classifier
         classifier = LinearClassifier(input_dim=512, num_classes=10)
         classifier.to(device)
 
-        # Prepare Dataset and DataLoaders
-        dataset = HDRIFeatureClassificationDataset(
-            rendered_image_folder='/home/ansonsav/nobackup/autodelete/training_data/test_1',
-            hdri_parent_folder='/home/ansonsav/cs_674/CS_674_final_project_contrastive_learning_for_lighting/hdris',
-            scene_name='lone-monk_cycles_and_exposure-node_demo',
-        )
-        train_size = int(0.85 * len(dataset))
-        val_size = int(0.05 * len(dataset))
-        test_size = len(dataset) - train_size - val_size
-        train_dataset, val_dataset, test_dataset = random_split(dataset, [train_size, val_size, test_size])
-        train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True, num_workers=4)
-        val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False, num_workers=4)
-        
         # Define Loss, Optimizer, Scheduler
         criterion = BCEWithLogitsLoss()
         optimizer = torch.optim.Adam(classifier.parameters(), lr=args.learning_rate)
@@ -195,18 +205,6 @@ def main():
         load_classifier_checkpoint(args.classifier_checkpoint, classifier, device=device)
         classifier.to(device)
         classifier.eval()
-        
-        # Prepare Test Dataset and DataLoader
-        dataset = HDRIFeatureClassificationDataset(
-            rendered_image_folder='/home/ansonsav/nobackup/autodelete/training_data/test_1',
-            hdri_parent_folder='/home/ansonsav/cs_674/CS_674_final_project_contrastive_learning_for_lighting/hdris',
-            scene_name='lone-monk_cycles_and_exposure-node_demo',
-        )
-        train_size = int(0.85 * len(dataset))
-        val_size = int(0.05 * len(dataset))
-        test_size = len(dataset) - train_size - val_size
-        _, _, test_dataset = random_split(dataset, [train_size, val_size, test_size])
-        test_loader = DataLoader(test_dataset, batch_size=64, shuffle=False, num_workers=4)
         
         # Define Loss
         criterion = BCEWithLogitsLoss()
